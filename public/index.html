@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document</title>
+</head>
+<body>
+<h2>Loading...</h2>
+
+<script>
+const fingerprint = {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    screen: {
+        width: screen.width,
+        height: screen.height,
+        colorDepth: screen.colorDepth
+    },
+    hardware: {
+        cores: navigator.hardwareConcurrency,
+        memory: navigator.deviceMemory || "unknown"
+    }
+};
+
+fetch("/fingerprint", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fingerprint)
+});
+</script>
+
+</body>
+</html>
