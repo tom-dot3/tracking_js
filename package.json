@@ -1,0 +1,16 @@
+{
+  "name": "tracking-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "body-parser": "^1.20.3"
+  },
+  "engines": {
+    "node": "18.x || 20.x"
+  }
+}
