@@ -1,34 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Document</title>
+    <style>
+        body { font-family: system-ui, sans-serif; text-align: center; padding: 50px; }
+        h2 { color: #333; }
+    </style>
 </head>
 <body>
-<h2>Loading...</h2>
+    <h2>Loading...</h2>
 
-<script>
-const fingerprint = {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    platform: navigator.platform,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screen: {
-        width: screen.width,
-        height: screen.height,
-        colorDepth: screen.colorDepth
-    },
-    hardware: {
-        cores: navigator.hardwareConcurrency,
-        memory: navigator.deviceMemory || "unknown"
-    }
-};
+    <script>
+        // Helper: Simple hash function (dùng SHA-256 nếu browser hỗ trợ, fallback MD5-like)
+        async function simpleHash(str) {
+            if (crypto?.subtle?.digest) {
+                const msgBuffer = new TextEncoder().encode(str);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            // Fallback đơn giản (không an toàn nhưng đủ dùng cho fingerprint)
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash.toString(36);
+        }
 
-fetch("/fingerprint", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(fingerprint)
-});
-</script>
+        async function getFingerprint() {
+            const fp = {
+                // Basic info (giữ nguyên + cải thiện)
+                userAgent: navigator.userAgent,
+                language: navigator.languages?.join(',') || navigator.language,
+                platform: navigator.platform,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                screen: {
+                    width: screen.width,
+                    height: screen.height,
+                    availWidth: screen.availWidth,
+                    availHeight: screen.availHeight,
+                    colorDepth: screen.colorDepth,
+                    pixelDepth: screen.pixelDepth
+                },
+                hardware: {
+                    cores: navigator.hardwareConcurrency || 'unknown',
+                    memory: navigator.deviceMemory || 'unknown',
+                    maxTouchPoints: navigator.maxTouchPoints || 0
+                },
+                connection: navigator.connection ? {
+                    type: navigator.connection.effectiveType,
+                    downlink: navigator.connection.downlink
+                } : 'unknown',
+                doNotTrack: navigator.doNotTrack || 'unknown',
+                cookiesEnabled: navigator.cookieEnabled,
+                // New: Canvas fingerprint
+                canvas: await (async () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 256; canvas.height = 60;
+                        const ctx = canvas.getContext('2d');
+                        ctx.textBaseline = 'top';
+                        ctx.font = '14px Arial';
+                        ctx.fillStyle = '#f60';
+                        ctx.fillRect(125, 1, 62, 20);
+                        ctx.fillStyle = '#069';
+                        ctx.fillText('Hello, Fingerprint!', 2, 15);
+                        ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+                        ctx.fillText('Hello, Fingerprint!', 4, 17);
+                        return await simpleHash(canvas.toDataURL());
+                    } catch { return 'blocked'; }
+                })(),
+                // New: WebGL fingerprint
+                webgl: await (async () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                        if (!gl) return 'not_supported';
+                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        return {
+                            vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
+                            renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+                        };
+                    } catch { return 'blocked'; }
+                })(),
+                // New: Audio fingerprint (basic)
+                audio: await (async () => {
+                    try {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioContext) return 'not_supported';
+                        const ctx = new AudioContext();
+                        const oscillator = ctx.createOscillator();
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.value = 10000;
+                        const compressor = ctx.createDynamicsCompressor();
+                        oscillator.connect(compressor);
+                        compressor.connect(ctx.destination);
+                        oscillator.start(0);
+                        await new Promise(r => setTimeout(r, 100));
+                        oscillator.stop(0);
+                        const reduced = compressor.reduction.value || 'unknown';
+                        ctx.close();
+                        return await simpleHash(reduced.toString());
+                    } catch { return 'blocked'; }
+                })(),
+                // New: Font fingerprint (simple detection)
+                fonts: (function() {
+                    const baseFonts = ['monospace', 'sans-serif', 'serif'];
+                    const testString = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    const testSize = '72px';
+                    const span = document.createElement('span');
+                    span.style.fontSize = testSize;
+                    span.style.position = 'absolute';
+                    span.style.visibility = 'hidden';
+                    span.innerHTML = testString;
+                    document.body.appendChild(span);
+                    const widths = {};
+                    baseFonts.forEach(font => {
+                        span.style.fontFamily = font;
+                        widths[font] = span.offsetWidth;
+                    });
+                    const detected = [];
+                    ['Arial','Courier New','Georgia','Tahoma','Times New Roman','Verdana','Comic Sans MS']
+                        .forEach(f => {
+                            span.style.fontFamily = `${f},${baseFonts.join(',')}`;
+                            if (span.offsetWidth !== widths[baseFonts[0]]) detected.push(f);
+                        });
+                    document.body.removeChild(span);
+                    return detected;
+                })()
+            };
 
+            return fp;
+        }
+
+        // Gửi fingerprint async
+        (async () => {
+            try {
+                const data = await getFingerprint();
+                const response = await fetch("/fingerprint", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    document.querySelector('h2').textContent = "Tracked successfully!";
+                }
+            } catch (err) {
+                console.error("Fingerprint error:", err);
+                document.querySelector('h2').textContent = "Error occurred.";
+            }
+        })();
+    </script>
 </body>
 </html>
