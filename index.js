@@ -4,10 +4,9 @@ const path = require("path");
 
 const app = express();
 
-app.use(bodyParser.json({ limit: "1mb" })); // Giới hạn body để tránh abuse
+app.use(bodyParser.json({ limit: "1mb" }));
 app.use(express.static("public"));
 
-// Helper để format log đẹp
 function createLogEntry(type, req, extra = {}) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
              req.headers["cf-connecting-ip"] ||
@@ -22,19 +21,15 @@ function createLogEntry(type, req, extra = {}) {
     url: req.originalUrl || req.url,
     method: req.method,
     ...extra,
-    // headers: chỉ log nếu cần debug sâu, tránh leak info nhạy cảm
-    // headers: req.headers
   };
 }
 
-// Middleware log request cơ bản (tùy chọn - rất hữu ích)
 app.use((req, res, next) => {
   const logEntry = createLogEntry("request", req);
   console.log("[REQUEST]", JSON.stringify(logEntry, null, 2));
   next();
 });
 
-// Trang chủ + log visit
 app.get("/", (req, res) => {
   const logEntry = createLogEntry("page_visit", req, {
     referrer: req.headers.referer || req.headers.referrer || "direct"
@@ -60,11 +55,10 @@ app.post("/fingerprint", (req, res) => {
   res.json({ status: "ok", receivedAt: new Date().toISOString() });
 });
 
-// Catch-all cho debug (optional)
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err);
   res.status(500).json({ error: "Internal server error" });
 });
 
-// Export cho Vercel (bắt buộc)
+// Export cho Vercel
 module.exports = app;
