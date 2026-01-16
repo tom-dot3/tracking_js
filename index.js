@@ -40,7 +40,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Nhận fingerprint
 app.post("/fingerprint", (req, res) => {
   if (!req.body || Object.keys(req.body).length === 0) {
     return res.status(400).json({ error: "Empty fingerprint data" });
@@ -60,5 +59,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-// Export cho Vercel
 module.exports = app;
