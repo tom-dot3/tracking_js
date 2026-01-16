@@ -3,16 +3,34 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Document</title>
+    <title>Fingerprint Collector</title>
     <style>
-        body { font-family: system-ui, sans-serif; text-align: center; padding: 50px; }
-        h2 { color: #333; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            text-align: center;
+            padding: 60px 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        #status {
+            font-size: 1.1em;
+            margin: 20px 0;
+            color: #555;
+        }
+        .success { color: #27ae60; }
+        .error   { color: #e74c3c; }
     </style>
 </head>
 <body>
-    <h2>Loading...</h2>
+    <h2>Fingerprint Collection</h2>
+    <div id="status">Preparing...</div>
 
     <script>
+        // Hàm hash đơn giản (dùng crypto nếu có, fallback sang số nguyên tố)
         async function simpleHash(str) {
             if (crypto?.subtle?.digest) {
                 const msgBuffer = new TextEncoder().encode(str);
@@ -20,6 +38,7 @@
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
                 return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
+            // Fallback cho trình duyệt cũ
             let hash = 0;
             for (let i = 0; i < str.length; i++) {
                 hash = ((hash << 5) - hash) + str.charCodeAt(i);
@@ -29,9 +48,10 @@
         }
 
         async function getFingerprint() {
-            const fp = {
+            const baseInfo = {
+                timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
-                language: navigator.languages?.join(',') || navigator.language,
+                language: navigator.languages?.join(', ') || navigator.language,
                 platform: navigator.platform,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 screen: {
@@ -40,7 +60,8 @@
                     availWidth: screen.availWidth,
                     availHeight: screen.availHeight,
                     colorDepth: screen.colorDepth,
-                    pixelDepth: screen.pixelDepth
+                    pixelDepth: screen.pixelDepth,
+                    devicePixelRatio: window.devicePixelRatio
                 },
                 hardware: {
                     cores: navigator.hardwareConcurrency || 'unknown',
@@ -48,42 +69,63 @@
                     maxTouchPoints: navigator.maxTouchPoints || 0
                 },
                 connection: navigator.connection ? {
-                    type: navigator.connection.effectiveType,
-                    downlink: navigator.connection.downlink
+                    effectiveType: navigator.connection.effectiveType,
+                    downlink: navigator.connection.downlink,
+                    rtt: navigator.connection.rtt,
+                    saveData: navigator.connection.saveData
                 } : 'unknown',
                 doNotTrack: navigator.doNotTrack || 'unknown',
                 cookiesEnabled: navigator.cookieEnabled,
-                canvas: await (async () => {
+                referrer: document.referrer || null
+            };
+
+            // Chạy song song các phần nặng / async
+            const [canvas, webgl, audio, fonts] = await Promise.all([
+                // Canvas fingerprint
+                (async () => {
                     try {
                         const canvas = document.createElement('canvas');
-                        canvas.width = 256; canvas.height = 60;
+                        canvas.width = 280;
+                        canvas.height = 70;
                         const ctx = canvas.getContext('2d');
                         ctx.textBaseline = 'top';
                         ctx.font = '14px Arial';
                         ctx.fillStyle = '#f60';
                         ctx.fillRect(125, 1, 62, 20);
                         ctx.fillStyle = '#069';
-                        ctx.fillText('Hello, Fingerprint!', 2, 15);
+                        ctx.fillText('🦊 Hello, Fingerprint! 🌐', 2, 15);
                         ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-                        ctx.fillText('Hello, Fingerprint!', 4, 17);
+                        ctx.fillText('🦊 Hello, Fingerprint! 🌐', 4, 17);
+                        ctx.font = '16px Georgia';
+                        ctx.fillText('2025-2026', 10, 45);
                         return await simpleHash(canvas.toDataURL());
-                    } catch { return 'blocked'; }
+                    } catch (e) {
+                        return 'blocked_or_error';
+                    }
                 })(),
 
-                webgl: await (async () => {
+                // WebGL fingerprint
+                (async () => {
                     try {
                         const canvas = document.createElement('canvas');
                         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
                         if (!gl) return 'not_supported';
                         const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
                         return {
-                            vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
-                            renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+                            vendor: debugInfo 
+                                ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) 
+                                : gl.getParameter(gl.VENDOR),
+                            renderer: debugInfo 
+                                ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) 
+                                : gl.getParameter(gl.RENDERER)
                         };
-                    } catch { return 'blocked'; }
+                    } catch {
+                        return 'blocked';
+                    }
                 })(),
 
-                audio: await (async () => {
+                // Audio fingerprint (rất hiệu quả)
+                (async () => {
                     try {
                         const AudioContext = window.AudioContext || window.webkitAudioContext;
                         if (!AudioContext) return 'not_supported';
@@ -95,61 +137,97 @@
                         oscillator.connect(compressor);
                         compressor.connect(ctx.destination);
                         oscillator.start(0);
-                        await new Promise(r => setTimeout(r, 100));
+                        await new Promise(r => setTimeout(r, 120));
                         oscillator.stop(0);
                         const reduced = compressor.reduction.value || 'unknown';
                         ctx.close();
-                        return await simpleHash(reduced.toString());
-                    } catch { return 'blocked'; }
+                        return await simpleHash(reduced.toString() + Date.now());
+                    } catch {
+                        return 'blocked';
+                    }
                 })(),
 
-                fonts: (function() {
-                    const baseFonts = ['monospace', 'sans-serif', 'serif'];
-                    const testString = 'abcdefghijklmnopqrstuvwxyz0123456789';
-                    const testSize = '72px';
-                    const span = document.createElement('span');
-                    span.style.fontSize = testSize;
-                    span.style.position = 'absolute';
-                    span.style.visibility = 'hidden';
-                    span.innerHTML = testString;
-                    document.body.appendChild(span);
-                    const widths = {};
-                    baseFonts.forEach(font => {
-                        span.style.fontFamily = font;
-                        widths[font] = span.offsetWidth;
-                    });
-                    const detected = [];
-                    ['Arial','Courier New','Georgia','Tahoma','Times New Roman','Verdana','Comic Sans MS']
-                        .forEach(f => {
-                            span.style.fontFamily = `${f},${baseFonts.join(',')}`;
-                            if (span.offsetWidth !== widths[baseFonts[0]]) detected.push(f);
-                        });
-                    document.body.removeChild(span);
-                    return detected;
-                })()
-            };
+                // Font fingerprint (đồng bộ)
+                (() => {
+                    try {
+                        const baseFonts = ['monospace', 'sans-serif', 'serif'];
+                        const testString = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                        const span = document.createElement('span');
+                        span.style.fontSize = '72px';
+                        span.style.position = 'absolute';
+                        span.style.visibility = 'hidden';
+                        span.innerHTML = testString;
+                        document.body.appendChild(span);
 
-            return fp;
+                        const widths = {};
+                        baseFonts.forEach(font => {
+                            span.style.fontFamily = font;
+                            widths[font] = span.offsetWidth + span.offsetHeight;
+                        });
+
+                        const detected = [];
+                        const testFonts = [
+                            'Arial', 'Courier New', 'Georgia', 'Helvetica', 
+                            'Tahoma', 'Times New Roman', 'Verdana', 'Comic Sans MS'
+                        ];
+
+                        testFonts.forEach(f => {
+                            span.style.fontFamily = `${f}, ${baseFonts.join(',')}`;
+                            if (span.offsetWidth + span.offsetHeight !== widths[baseFonts[0]]) {
+                                detected.push(f);
+                            }
+                        });
+
+                        document.body.removeChild(span);
+                        return detected.length > 0 ? detected : ['default_only'];
+                    } catch {
+                        return ['error'];
+                    }
+                })()
+            ]);
+
+            return {
+                ...baseInfo,
+                canvas,
+                webgl,
+                audio,
+                fonts
+            };
         }
 
-        // Gửi fingerprint
+        // Chạy chính
         (async () => {
+            const status = document.getElementById('status');
+
             try {
-                const data = await getFingerprint();
+                status.textContent = "Collecting browser fingerprint...";
+                status.className = "";
+
+                const fingerprint = await getFingerprint();
+
+                status.textContent = "Sending data to server...";
+
                 const response = await fetch("/fingerprint", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data)
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(fingerprint)
                 });
+
                 if (response.ok) {
-                    document.querySelector('h2').textContent = "Tracked successfully!";
+                    status.textContent = "Success! Fingerprint tracked.";
+                    status.className = "success";
+                } else {
+                    throw new Error(`Server responded with ${response.status}`);
                 }
+
             } catch (err) {
                 console.error("Fingerprint error:", err);
-                document.querySelector('h2').textContent = "Error occurred.";
+                status.textContent = "Error: " + err.message;
+                status.className = "error";
             }
         })();
     </script>
-
 </body>
 </html>
