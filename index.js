@@ -4,7 +4,7 @@ const path = require("path");
 
 const app = express();
 
-app.use(bodyParser.json({ limit: "1mb" }));
+app.use(bodyParser.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 function createLogEntry(type, req, extra = {}) {
