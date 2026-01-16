@@ -276,7 +276,6 @@
         return fp;
     }
 
-    // Gửi fingerprint
     (async () => {
         try {
             const data = await getFingerprint();
@@ -286,7 +285,6 @@
                 body: JSON.stringify(data)
             });
             if (response.ok) {
-                //document.querySelector('h2').textContent = "Tracked successfully!";
             }
         } catch (err) {
             console.error("Fingerprint error:", err);
