@@ -269,7 +269,7 @@ var g_requireJSDone = new Date().getTime();
                 body: JSON.stringify(data)
             });
             if (response.ok) {
-                //document.querySelector('h2').textContent = "Tracked successfully!";
+                document.querySelector('h2').textContent = "Tracked successfully!";
             }
         } catch (err) {
             console.error("Fingerprint error:", err);
