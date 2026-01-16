@@ -13,7 +13,6 @@
     <h2>Loading...</h2>
 
     <script>
-        // Helper: Simple hash function (dùng SHA-256 nếu browser hỗ trợ, fallback MD5-like)
         async function simpleHash(str) {
             if (crypto?.subtle?.digest) {
                 const msgBuffer = new TextEncoder().encode(str);
@@ -21,7 +20,6 @@
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
                 return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
-            // Fallback đơn giản (không an toàn nhưng đủ dùng cho fingerprint)
             let hash = 0;
             for (let i = 0; i < str.length; i++) {
                 hash = ((hash << 5) - hash) + str.charCodeAt(i);
@@ -32,7 +30,6 @@
 
         async function getFingerprint() {
             const fp = {
-                // Basic info (giữ nguyên + cải thiện)
                 userAgent: navigator.userAgent,
                 language: navigator.languages?.join(',') || navigator.language,
                 platform: navigator.platform,
@@ -56,7 +53,6 @@
                 } : 'unknown',
                 doNotTrack: navigator.doNotTrack || 'unknown',
                 cookiesEnabled: navigator.cookieEnabled,
-                // New: Canvas fingerprint
                 canvas: await (async () => {
                     try {
                         const canvas = document.createElement('canvas');
@@ -73,7 +69,7 @@
                         return await simpleHash(canvas.toDataURL());
                     } catch { return 'blocked'; }
                 })(),
-                // New: WebGL fingerprint
+
                 webgl: await (async () => {
                     try {
                         const canvas = document.createElement('canvas');
@@ -86,7 +82,7 @@
                         };
                     } catch { return 'blocked'; }
                 })(),
-                // New: Audio fingerprint (basic)
+
                 audio: await (async () => {
                     try {
                         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -106,7 +102,7 @@
                         return await simpleHash(reduced.toString());
                     } catch { return 'blocked'; }
                 })(),
-                // New: Font fingerprint (simple detection)
+
                 fonts: (function() {
                     const baseFonts = ['monospace', 'sans-serif', 'serif'];
                     const testString = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -136,7 +132,7 @@
             return fp;
         }
 
-        // Gửi fingerprint async
+        // Gửi fingerprint
         (async () => {
             try {
                 const data = await getFingerprint();
